@@ -86,10 +86,12 @@ run_redirector_in_background() {
   if [ -e "$redirector_log" ] && [ ! -w "$redirector_log" ]; then
     rm -f "$redirector_log"
   fi
-  echo Starting the redirector...
-  # We need nohup so the redirector doesn't terminate on shell exit,
-  # but it isn't necessary for keybase/kbfs/gui which autofork.
-  nohup keybase-redirector /keybase >> "$redirector_log" 2>&1 &
+  if command -v keybase-redirector; then
+      echo Starting the redirector...
+      # We need nohup so the redirector doesn't terminate on shell exit,
+      # but it isn't necessary for keybase/kbfs/gui which autofork.
+      nohup keybase-redirector /keybase >> "$redirector_log" 2>&1 &
+  fi
 }
 
 start_background() {
@@ -143,7 +145,8 @@ warn_if_weird_path() {
 }
 
 show_cryptosquirrel() {
-  [ "${KEYBASE_NO_SQUIRREL:-}" != "1" ] && cat /opt/keybase/crypto_squirrel.txt
+  path="/opt/keybase/crypto_squirrel.txt"
+  [ "${KEYBASE_NO_SQUIRREL:-}" != "1" ] && [ -f "$path" ] && cat "$path"
 }
 
 warn_if_exists_and_unwritable() {
