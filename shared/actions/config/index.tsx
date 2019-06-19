@@ -381,6 +381,9 @@ const routeToInitialScreen = state => {
 }
 
 const handleAppLink = (_, action: ConfigGen.LinkPayload) => {
+  if (!action.payload.link) {
+      return
+  }
   const url = new URL(action.payload.link)
   if (action.payload.link.startsWith('web+stellar:')) {
     console.warn('Got SEP7 link:', action.payload.link)

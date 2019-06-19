@@ -121,16 +121,9 @@ start_background() {
       echo Launching Keybase GUI...
       gui_log="$logdir/Keybase.app.log"
       # Allow distributions to change the location of the gui as long as it's in PATH.
-      if command -v Keybase &> /dev/null; then
-          Keybase &>> "$gui_log" &
-          if [ -n "${KEYBASE_STARTUP_URL:-}" ]; then
-              Keybase "${KEYBASE_STARTUP_URL:-}" # signal url scheme if provided
-          fi
-      else
-          /opt/keybase/Keybase "${KEYBASE_STARTUP_URL:-}" &>> "$gui_log" &
-          if [ -n "${KEYBASE_STARTUP_URL:-}" ]; then
-              /opt/keybase/Keybase "${KEYBASE_STARTUP_URL:-}" # signal url scheme if provided
-          fi
+      "$KEYBASE" &>> "$gui_log" &
+      if [ -n "${KEYBASE_STARTUP_URL:-}" ]; then
+          "$KEYBASE" "${KEYBASE_STARTUP_URL:-}" # signal url scheme if provided
       fi
   fi
 }
@@ -180,6 +173,12 @@ init() {
 
   # Remove legacy envfiles; now stored in config directory by ctl init
   rm -f "$runtime_dir/keybase.env" "$runtime_dir/keybase.kbfs.env" "$runtime_dir/keybase.gui.env"
+
+  if command -v Keybase &> /dev/null; then
+    KEYBASE=Keybase
+  else
+    KEYBASE=/opt/keybase/Keybase
+  fi
 }
 
 check_for_url_scheme_launch() {
@@ -192,11 +191,7 @@ check_for_url_scheme_launch() {
   if [[ $# -eq 1 && "$1" =~ ^web+.* ]]; then
       KEYBASE_STARTUP_URL="$1"
       if pgrep -u "$USER" -f 'Keybase$' &> /dev/null; then
-          if command -v Keybase &> /dev/null; then
-              Keybase "$KEYBASE_STARTUP_URL"
-          else
-              /opt/keybase/Keybase "$KEYBASE_STARTUP_URL"
-          fi
+          "$KEYBASE" "$KEYBASE_STARTUP_URL"
           exit
       else
           if keybase ctl wants-systemd &> /dev/null; then
@@ -262,9 +257,12 @@ while getopts "afghk" flag; do
     esac
 done
 
+init
+
+# Exit early if run caused by a URL scheme invocation and Keybase is alread
+# running; otherwise fall through to start Keybase.
 check_for_url_scheme_launch "$@"
 
-init
 # Always stop any running services. With systemd, we could've decided to just
 # `start` services and no-op if they're already running, however:
 # 1) We still need to handle the case where services started outside systemd
