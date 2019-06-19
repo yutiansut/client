@@ -123,8 +123,14 @@ start_background() {
       # Allow distributions to change the location of the gui as long as it's in PATH.
       if command -v Keybase &> /dev/null; then
           Keybase &>> "$gui_log" &
+          if [ -n "${KEYBASE_STARTUP_URL:-}" ]; then
+              Keybase "${KEYBASE_STARTUP_URL:-}" # signal url scheme if provided
+          fi
       else
-          /opt/keybase/Keybase &>> "$gui_log" &
+          /opt/keybase/Keybase "${KEYBASE_STARTUP_URL:-}" &>> "$gui_log" &
+          if [ -n "${KEYBASE_STARTUP_URL:-}" ]; then
+              /opt/keybase/Keybase "${KEYBASE_STARTUP_URL:-}" # signal url scheme if provided
+          fi
       fi
   fi
 }
@@ -183,14 +189,19 @@ check_for_url_scheme_launch() {
   # by checking argv.
 
   # If Keybase is already running, then pass it the link and exit.
-  if [[ $# -eq 1 && "$1" == web+stellar:* ]]; then
-      if pgrep -u "$USER" 'Keybase$' &> /dev/null; then
+  if [[ $# -eq 1 && "$1" =~ ^web+.* ]]; then
+      KEYBASE_STARTUP_URL="$1"
+      if pgrep -u "$USER" -f 'Keybase$' &> /dev/null; then
           if command -v Keybase &> /dev/null; then
-              Keybase $1 &
+              Keybase "$KEYBASE_STARTUP_URL"
           else
-              /opt/keybase/Keybase $1 &
+              /opt/keybase/Keybase "$KEYBASE_STARTUP_URL"
           fi
           exit
+      else
+          if keybase ctl wants-systemd &> /dev/null; then
+              systemctl --user set-environment "KEYBASE_STARTUP_URL=$KEYBASE_STARTUP_URL"
+          fi
       fi
   fi
 
@@ -251,7 +262,7 @@ while getopts "afghk" flag; do
     esac
 done
 
-check_for_url_scheme_launch $@
+check_for_url_scheme_launch "$@"
 
 init
 # Always stop any running services. With systemd, we could've decided to just
