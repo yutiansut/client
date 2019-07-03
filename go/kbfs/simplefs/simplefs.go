@@ -24,6 +24,7 @@ import (
 	"github.com/keybase/client/go/kbfs/libfs"
 	"github.com/keybase/client/go/kbfs/libhttpserver"
 	"github.com/keybase/client/go/kbfs/libkbfs"
+	"github.com/keybase/client/go/kbfs/search"
 	"github.com/keybase/client/go/kbfs/tlf"
 	"github.com/keybase/client/go/kbfs/tlfhandle"
 	"github.com/keybase/client/go/libkb"
@@ -116,6 +117,8 @@ type SimpleFS struct {
 	subscribeToEmptyTlf         string
 
 	localHTTPServer *libhttpserver.Server
+
+	indexer *search.Indexer
 }
 
 type inprogress struct {
@@ -145,6 +148,10 @@ func newSimpleFS(appStateUpdater env.AppStateUpdater, config libkbfs.Config) *Si
 			log.Fatalf("initializing localHTTPServer error: %v", err)
 		}
 	}
+	indexer, err := search.NewIndexer(config)
+	if err != nil {
+		panic(err)
+	}
 	return &SimpleFS{
 		config:          config,
 		handles:         map[keybase1.OpID]*handle{},
@@ -154,6 +161,7 @@ func newSimpleFS(appStateUpdater env.AppStateUpdater, config libkbfs.Config) *Si
 		newFS:           defaultNewFS,
 		idd:             libkbfs.NewImpatientDebugDumperForForcedDumps(config),
 		localHTTPServer: localHTTPServer,
+		indexer:         indexer,
 	}
 }
 
@@ -2685,4 +2693,46 @@ func (k *SimpleFS) SimpleFSDeobfuscatePath(
 		return nil, errors.New("Found no matching paths")
 	}
 	return res, nil
+}
+
+func (k *SimpleFS) SimpleFSDoIndex(
+	ctx context.Context, path keybase1.Path) error {
+	ctx, err := k.startOpWrapContext(k.makeContext(ctx))
+	if err != nil {
+		return err
+	}
+	defer func() { libcontext.CleanupCancellationDelayer(ctx) }()
+	t, tlfName, midPath, finalElem, err := remoteTlfAndPath(path)
+	if err != nil {
+		return err
+	}
+	tlfHandle, err := libkbfs.GetHandleFromFolderNameAndType(
+		ctx, k.config.KBPKI(), k.config.MDOps(), k.config, tlfName, t)
+	if err != nil {
+		return err
+	}
+	branch, err := k.branchNameFromPath(ctx, tlfHandle, path)
+	if err != nil {
+		return err
+	}
+	fs, err := k.newFS(
+		ctx, k.config, tlfHandle, branch, "", false)
+	if err != nil {
+		return err
+	}
+	asLibFS, ok := fs.(*libfs.FS)
+	if !ok {
+		return errors.Errorf("FS was not a KBFS file system: %T", fs)
+	}
+	asLibFS, err = asLibFS.ChrootAsLibFS(fs.Join(midPath, finalElem))
+	if err != nil {
+		return err
+	}
+
+	return k.indexer.Index(asLibFS)
+}
+
+func (k *SimpleFS) SimpleFSSearch(
+	ctx context.Context, query string) (res []string, err error) {
+	return k.indexer.Search(query)
 }
