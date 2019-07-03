@@ -578,3 +578,25 @@ func (s *SimpleFSHandler) SimpleFSDeobfuscatePath(
 	}
 	return cli.SimpleFSDeobfuscatePath(ctx, path)
 }
+
+func (s *SimpleFSHandler) SimpleFSDoIndex(
+	ctx context.Context, path keybase1.Path) error {
+	ctx, cancel := s.wrapContextWithTimeout(ctx)
+	defer cancel()
+	cli, err := s.client()
+	if err != nil {
+		return err
+	}
+	return cli.SimpleFSDoIndex(ctx, path)
+}
+
+func (s *SimpleFSHandler) SimpleFSSearch(
+	ctx context.Context, query string) (res []string, err error) {
+	ctx, cancel := s.wrapContextWithTimeout(ctx)
+	defer cancel()
+	cli, err := s.client()
+	if err != nil {
+		return nil, err
+	}
+	return cli.SimpleFSSearch(ctx, query)
+}
