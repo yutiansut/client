@@ -255,6 +255,8 @@ func (p *blockPrefetcher) incOverallSyncTotalBytes(req *prefetchRequest) {
 	}
 
 	p.overallSyncStatus.SubtreeBytesTotal += uint64(req.encodedSize)
+	p.log.CDebugf(nil, "PREFETCH OVERALL +%d total=%d",
+		req.encodedSize, p.overallSyncStatus.SubtreeBytesTotal)
 	req.countedInOverall = true
 	p.sendOverallSyncStatusLocked()
 }
@@ -276,6 +278,8 @@ func (p *blockPrefetcher) decOverallSyncTotalBytes(req *prefetchRequest) {
 	}
 
 	p.overallSyncStatus.SubtreeBytesTotal -= uint64(req.encodedSize)
+	p.log.CDebugf(nil, "PREFETCH OVERALL -%d total=%d",
+		req.encodedSize, p.overallSyncStatus.SubtreeBytesTotal)
 	req.countedInOverall = false
 	p.sendOverallSyncStatusLocked()
 }
@@ -1252,6 +1256,9 @@ func (p *blockPrefetcher) handlePrefetchRequest(req *prefetchRequest) {
 		pp.subtreeBlockCount += numBlocks
 		pp.SubtreeBytesFetched += numBytesFetched
 		pp.SubtreeBytesTotal += numBytesTotal
+		if len(pp.parents) == 0 {
+			p.log.CDebugf(ctx, "PREFETCH ROOT +%d total=%d", numBytesTotal, pp.SubtreeBytesTotal)
+		}
 	}, req.ptr.ID, pre)
 	// Ensure this block's status is marked as triggered.  If
 	// it was rescheduled due to a previously-full cache, it
