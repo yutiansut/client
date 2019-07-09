@@ -1261,7 +1261,7 @@ func (p *blockPrefetcher) handlePrefetchRequest(req *prefetchRequest) {
 		pp.SubtreeBytesFetched += numBytesFetched
 		pp.SubtreeBytesTotal += numBytesTotal
 		if len(pp.parents) == 0 {
-			p.log.CDebugf(ctx, "PREFETCH ROOT +%d total=%d", numBytesTotal, pp.SubtreeBytesTotal)
+			p.log.CDebugf(ctx, "PREFETCH ROOT +%d total=%d, ptr=%v", numBytesTotal, pp.SubtreeBytesTotal, pp.req.ptr)
 		}
 	}, req.ptr.ID, pre)
 	// Ensure this block's status is marked as triggered.  If
