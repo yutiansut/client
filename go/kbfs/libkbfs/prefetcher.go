@@ -639,6 +639,9 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 		req := &prefetchRequest{
 			ptr, info.EncodedSize, block.NewEmptier(), kmd, priority,
 			lifetime, NoPrefetch, action, nil, obseleted, false}
+		p.log.CDebugf(nil, "NEW PREFETCH info.EncodedSize=%d req.encodedSize=%d",
+			info.EncodedSize, req.encodedSize)
+
 		pre = p.newPrefetch(1, uint64(info.EncodedSize), false, req)
 		p.prefetches[ptr.ID] = pre
 	}
@@ -653,6 +656,7 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 		oldAction := pre.req.action
 		pre.req.action = newAction
 		if !oldAction.Sync() && newAction.Sync() {
+			p.log.CDebugf(nil, "NEWLY-SYNCING PREFETCH req.encodedSize=%d", pre.req.encodedSize)
 			p.incOverallSyncTotalBytes(pre.req)
 		}
 
