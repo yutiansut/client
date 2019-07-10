@@ -44,7 +44,9 @@ const rpcConflictStateToConflictState = (
           localViewTlfPaths: I.List(
             (rpcConflictState.normalview.localViews || [])
               .map(p =>
-                p.PathType === RPCTypes.PathType.kbfs ? Types.stringToPath(p.kbfs) : Constants.defaultPath
+                p.PathType === RPCTypes.PathType.kbfs
+                  ? Types.stringToPath(p.kbfs.path)
+                  : Constants.defaultPath
               )
               .filter(p => p !== Constants.defaultPath)
           ),
@@ -54,7 +56,7 @@ const rpcConflictStateToConflictState = (
       : Constants.makeConflictStateManualResolvingLocalView({
           normalViewTlfPath:
             rpcConflictState.manualresolvinglocalview.normalView.PathType === RPCTypes.PathType.kbfs
-              ? Types.stringToPath(rpcConflictState.manualresolvinglocalview.normalView.kbfs)
+              ? Types.stringToPath(rpcConflictState.manualresolvinglocalview.normalView.kbfs.path)
               : Constants.defaultPath,
         })
     : Constants.tlfNormalViewWithNoConflict
@@ -158,7 +160,6 @@ const loadTlfSyncConfig = (state, action: FsGen.LoadTlfSyncConfigPayload) => {
     return null
   }
   return RPCTypes.SimpleFSSimpleFSFolderSyncConfigAndStatusRpcPromise({
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     path: Constants.pathToRPCPath(tlfPath),
   })
     .then(result =>
@@ -177,7 +178,6 @@ const setTlfSyncConfig = (state, action: FsGen.SetTlfSyncConfigPayload) =>
       config: {
         mode: action.payload.enabled ? RPCTypes.FolderSyncMode.enabled : RPCTypes.FolderSyncMode.disabled,
       },
-      identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
       path: Constants.pathToRPCPath(action.payload.tlfPath),
     },
     Constants.syncToggleWaitingKey
@@ -354,7 +354,6 @@ function* folderList(_, action: FsGen.FolderListLoadPayload | FsGen.EditSuccessP
     if (pathElems.length < 3) {
       yield* Saga.callPromise(RPCTypes.SimpleFSSimpleFSListRpcPromise, {
         filter: RPCTypes.ListFilter.filterSystemHidden,
-        identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
         opID,
         path: Constants.pathToRPCPath(rootPath),
         refreshSubscription,
@@ -363,7 +362,6 @@ function* folderList(_, action: FsGen.FolderListLoadPayload | FsGen.EditSuccessP
       yield* Saga.callPromise(RPCTypes.SimpleFSSimpleFSListRecursiveToDepthRpcPromise, {
         depth: 1,
         filter: RPCTypes.ListFilter.filterSystemHidden,
-        identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
         opID,
         path: Constants.pathToRPCPath(rootPath),
         refreshSubscription,
@@ -497,7 +495,6 @@ function* download(state, action: FsGen.DownloadPayload | FsGen.ShareNativePaylo
       PathType: RPCTypes.PathType.local,
       local: localPath,
     },
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     opID,
     src: Constants.pathToRPCPath(path),
   })
@@ -545,7 +542,6 @@ function* upload(_, action: FsGen.UploadPayload) {
   // TODO: what about directory merges?
   yield* Saga.callPromise(RPCTypes.SimpleFSSimpleFSCopyRecursiveRpcPromise, {
     dest: Constants.pathToRPCPath(path),
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     opID,
     src: {
       PathType: RPCTypes.PathType.local,
@@ -771,7 +767,6 @@ const commitEdit = (state, action: FsGen.CommitEditPayload): Promise<Saga.MaybeA
       return RPCTypes.SimpleFSSimpleFSOpenRpcPromise({
         dest: Constants.pathToRPCPath(Types.pathConcat(parentPath, name)),
         flags: RPCTypes.OpenFlags.directory,
-        identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
         opID: Constants.makeUUID(),
       })
         .then(() => FsGen.createEditSuccess({editID, parentPath}))
@@ -793,7 +788,6 @@ function* loadPathMetadata(state, action: FsGen.LoadPathMetadataPayload) {
   try {
     const dirent = yield RPCTypes.SimpleFSSimpleFSStatRpcPromise({
       path: Constants.pathToRPCPath(path),
-      identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
       refreshSubscription,
     })
     let pathItem = makeEntry(dirent)
@@ -826,7 +820,6 @@ const deleteFile = (state, action: FsGen.DeleteFilePayload) => {
   const opID = Constants.makeUUID()
   return RPCTypes.SimpleFSSimpleFSRemoveRpcPromise({
     opID,
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     path: Constants.pathToRPCPath(action.payload.path),
     recursive: true,
   })
@@ -848,7 +841,6 @@ const moveOrCopy = (state, action: FsGen.MovePayload | FsGen.CopyPayload) => {
         // We use the local path name here since we only care about file name.
       )
     ),
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     opID: Constants.makeUUID() as string,
     src:
       state.fs.destinationPicker.source.type === Types.DestinationPickerSource.MoveOrCopy
@@ -1029,13 +1021,11 @@ const waitForKbfsDaemon = (
 
 const startManualCR = (state, action) =>
   RPCTypes.SimpleFSSimpleFSClearConflictStateRpcPromise({
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     path: Constants.pathToRPCPath(action.payload.tlfPath),
   }).then(() => FsGen.createFavoritesLoad())
 
 const finishManualCR = (state, action) =>
   RPCTypes.SimpleFSSimpleFSFinishResolvingConflictRpcPromise({
-    identifyBehavior: RPCTypes.TLFIdentifyBehavior.fsGui,
     path: Constants.pathToRPCPath(action.payload.localViewTlfPath),
   }).then(() => FsGen.createFavoritesLoad())
 

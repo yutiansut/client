@@ -2671,7 +2671,7 @@ func (path Path) String() string {
 	}
 	switch pathType {
 	case PathType_KBFS:
-		return path.Kbfs()
+		return path.Kbfs().Path
 	case PathType_KBFS_ARCHIVED:
 		return path.KbfsArchived().Path
 	case PathType_LOCAL:
@@ -3234,4 +3234,8 @@ func (s MobileNetworkState) IsLimited() bool {
 	default:
 		return true
 	}
+}
+
+func NewPathWithKbfsPath(path string) Path {
+	return NewPathWithKbfs(KBFSPath{Path: path})
 }
