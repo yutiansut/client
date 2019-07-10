@@ -345,6 +345,7 @@ func (p *blockPrefetcher) getParentForApply(
 	parentDone := false
 	select {
 	case <-ch:
+		p.log.CDebugf(nil, "PARENT DONE")
 		parentDone = true
 	default:
 	}
@@ -470,6 +471,7 @@ func (p *blockPrefetcher) completePrefetch(
 				panic(fmt.Sprintf("Bytes fetch mismatch: fetched=%d, total=%d",
 					pp.SubtreeBytesFetched, pp.SubtreeBytesTotal))
 			}
+			p.log.CDebugf(pp.ctx, "PREFETCH COMPLETED %v", blockID)
 			delete(p.prefetches, blockID)
 			p.clearRescheduleState(blockID)
 			delete(p.rescheduled, blockID)
@@ -662,6 +664,11 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 		if !oldAction.Sync() && newAction.Sync() {
 			p.log.CDebugf(nil, "NEWLY-SYNCING PREFETCH req.encodedSize=%d", pre.req.encodedSize)
 			p.incOverallSyncTotalBytes(pre.req)
+			// Delete the old parent waitCh if it's been canceled already.
+			if ch, ok := pre.parents[ptr.RefNonce][parentPtr]; ok {
+				_ = p.getParentForApply(
+					parentPtr, pre.parents[ptr.RefNonce], ch)
+			}
 		}
 
 		ch := p.retriever.Request(
@@ -708,8 +715,10 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 func (p *blockPrefetcher) handleStatusRequest(req *prefetchStatusRequest) {
 	pre, isPrefetchWaiting := p.prefetches[req.ptr.ID]
 	if !isPrefetchWaiting {
+		p.log.CDebugf(nil, "PREFETCH NO PROGRESS %v", req.ptr)
 		req.ch <- PrefetchProgress{}
 	} else {
+		p.log.CDebugf(pre.ctx, "PREFETCH PROGRESS %v %#v", req.ptr, pre.PrefetchProgress)
 		req.ch <- pre.PrefetchProgress
 	}
 }
