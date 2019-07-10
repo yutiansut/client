@@ -511,6 +511,7 @@ protocol local {
   record ConversationLocalParticipant {
     string username;
     union { null, string } fullname;
+    union { null, string } contactName;
   }
 
   record ConversationInfoLocal {
