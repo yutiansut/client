@@ -383,6 +383,8 @@ func (p *blockPrefetcher) applyToPtrParentsRecursive(
 		parent := p.getParentForApply(pptr, refMap, ch)
 		if parent != nil {
 			p.applyToPtrParentsRecursive(f, pptr, parent)
+		} else {
+			p.log.CDebugf(pre.ctx, "PREFETCH PARENT DELETED ptr=%v parent=%v", ptr, pptr)
 		}
 	}
 	if len(pre.parents[ptr.RefNonce]) == 0 {
@@ -412,6 +414,8 @@ func (p *blockPrefetcher) applyToParentsRecursive(
 			parent := p.getParentForApply(pptr, refMap, ch)
 			if parent != nil {
 				p.applyToParentsRecursive(f, pptr.ID, parent)
+			} else {
+				p.log.CDebugf(pre.ctx, "PREFETCH PARENT DELETED ptr=%v parent=%v", pre.req.ptr, pptr)
 			}
 		}
 		if len(refMap) == 0 {
@@ -690,9 +694,13 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 			p.vlog.CLogf(ctx, libkb.VLog2,
 				"Prefetching %v, action=%s, numBlocks=%d, isParentNew=%t",
 				ptr, action, pre.subtreeBlockCount, isParentNew)
+		} else {
+			p.log.CDebugf(ctx, "PREFETCH %v block count is 0", ptr)
 		}
 		return pre.subtreeBlockCount, pre.SubtreeBytesFetched,
 			pre.SubtreeBytesTotal
+	} else {
+		p.log.CDebugf(ctx, "PREFETCH %v has parent %v and parent not new", ptr, parentPtr)
 	}
 	return 0, 0, 0
 }
