@@ -52,6 +52,7 @@ const externalPartners = [externalPartner, {...externalPartner, showDivider: tru
 
 const sharedSettingsProps = {
   accountID: Types.noAccountID,
+  backOnFallingEdge: false,
   canSubmitTx: true,
   currencies: testCurrencies,
   currencyWaiting: false,

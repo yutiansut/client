@@ -10,6 +10,7 @@ import openUrl from '../../../util/open-url'
 
 export type SettingsProps = {
   accountID: Types.AccountID
+  backOnFallingEdge: boolean
   name: string
   user: string
   inflationDestination: string
@@ -73,6 +74,14 @@ class AccountSettings extends React.Component<SettingsProps> {
   componentDidMount() {
     this.props.refresh()
   }
+
+  componentDidUpdate(prevProps: SettingsProps) {
+    if (!this.props.backOnFallingEdge && prevProps.backOnFallingEdge) {
+      console.log("xxx AccountSettings onBack due to falling edge")
+      this.props.onBack()
+    }
+  }
+
   render() {
     const props = this.props
     return (

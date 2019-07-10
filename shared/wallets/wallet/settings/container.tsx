@@ -55,6 +55,7 @@ const mapStateToProps = state => {
   const externalPartners = Constants.getExternalPartners(state, accountID)
   return {
     accountID,
+    backOnFallingEdge: !!state.wallets.building.get('bid'),
     canSubmitTx,
     currencies,
     currency,
