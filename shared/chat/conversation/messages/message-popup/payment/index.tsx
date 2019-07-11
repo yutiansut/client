@@ -64,6 +64,21 @@ export type Props = {
   visible: boolean
 } & HeaderProps
 
+const headerIcon = (props: HeaderProps) =>
+  props.status === 'pending' ? (
+    <Kb.Icon
+      type="iconfont-time"
+      color={Styles.globalColors.black_50}
+      fontSize={40}
+      style={Kb.iconCastPlatformStyles(styles.pendingHeaderIcon)}
+    />
+  ) : (
+    <Kb.Icon
+      type={props.icon === 'sending' ? sendIcon : receiveIcon}
+      style={Kb.iconCastPlatformStyles(styles.headerIcon)}
+    />
+  )
+
 const Header = (props: HeaderProps) =>
   props.loading ? (
     <Kb.Box2 direction="vertical" fullWidth={true} style={styles.popupContainer}>
@@ -74,10 +89,7 @@ const Header = (props: HeaderProps) =>
   ) : (
     <Kb.Box2 fullWidth={true} gap="small" gapEnd={true} direction="vertical" style={styles.popupContainer}>
       <Kb.Box2 direction="vertical" fullWidth={true} style={headerTop(props)}>
-        <Kb.Icon
-          type={props.icon === 'sending' ? sendIcon : receiveIcon}
-          style={Kb.iconCastPlatformStyles(styles.headerIcon)}
-        />
+        {headerIcon(props)}
         <Kb.Text type="BodyTiny" style={headerTextStyle(props)}>
           {toUpper(props.topLine)}
         </Kb.Text>
@@ -212,6 +224,19 @@ const styles = Styles.styleSheetCreate({
     isMobile: {
       marginBottom: Styles.globalMargins.small,
       marginTop: Styles.globalMargins.small,
+    },
+  }),
+  pendingHeaderIcon: Styles.platformStyles({
+    common: {
+      height: headerIconHeight,
+      paddingBottom: Styles.globalMargins.large,
+      marginBottom: Styles.globalMargins.large,
+    },
+    isAndroid: {
+    },
+    isElectron: {
+    },
+    isMobile: {
     },
   }),
   headerTextNotPending: {color: Styles.globalColors.white},
