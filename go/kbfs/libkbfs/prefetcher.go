@@ -74,6 +74,7 @@ const (
 type prefetch struct {
 	subtreeBlockCount int
 	subtreeTriggered  bool
+	subtreeRetrigger  bool
 	req               *prefetchRequest
 	// Each refnonce for this block ID can have a different set of
 	// parents.  Track the channel for the specific instance of the
@@ -455,6 +456,7 @@ func (p *blockPrefetcher) completePrefetch(
 	return func(blockID kbfsblock.ID, pp *prefetch) {
 		pp.subtreeBlockCount -= numBlocks
 		pp.SubtreeBytesFetched += numBytes
+		p.log.CDebugf(pp.ctx, "PREFETCH FINISHED %v bytes %d (%d/%d)", blockID, numBytes, pp.SubtreeBytesFetched, pp.SubtreeBytesTotal)
 		if pp.subtreeBlockCount < 0 {
 			// Both log and panic so that we get the PFID in the log.
 			p.log.CErrorf(pp.ctx, "panic: completePrefetch overstepped its "+
@@ -468,8 +470,8 @@ func (p *blockPrefetcher) completePrefetch(
 		}
 		if pp.subtreeBlockCount == 0 {
 			if pp.SubtreeBytesFetched != pp.SubtreeBytesTotal {
-				panic(fmt.Sprintf("Bytes fetch mismatch: fetched=%d, total=%d",
-					pp.SubtreeBytesFetched, pp.SubtreeBytesTotal))
+				panic(fmt.Sprintf("Bytes fetch mismatch %v: fetched=%d, total=%d",
+					blockID, pp.SubtreeBytesFetched, pp.SubtreeBytesTotal))
 			}
 			p.log.CDebugf(pp.ctx, "PREFETCH COMPLETED %v", blockID)
 			delete(p.prefetches, blockID)
@@ -575,6 +577,7 @@ func (p *blockPrefetcher) markQueuedPrefetchDone(ptr data.BlockPointer) {
 
 func (p *blockPrefetcher) doCancel(id kbfsblock.ID, pp *prefetch) {
 	p.decOverallSyncTotalBytes(pp.req)
+	p.log.CDebugf(pp.ctx, "PREFETCH CANCELING %v %+v", id, errors.New("HERE"))
 	delete(p.prefetches, id)
 	pp.Close()
 	p.clearRescheduleState(id)
@@ -669,6 +672,7 @@ func (p *blockPrefetcher) request(ctx context.Context, priority int,
 				_ = p.getParentForApply(
 					parentPtr, pre.parents[ptr.RefNonce], ch)
 			}
+			pre.subtreeRetrigger = true
 		}
 
 		ch := p.retriever.Request(
@@ -1154,7 +1158,12 @@ func (p *blockPrefetcher) handlePrefetchRequest(req *prefetchRequest) {
 	}
 
 	if isPrefetchWaiting {
-		if pre.subtreeTriggered {
+		if pre.subtreeRetrigger {
+			p.vlog.CLogf(
+				ctx, libkb.VLog2,
+				"retriggering prefetch subtree for block ID %s", req.ptr.ID)
+			pre.subtreeRetrigger = false
+		} else if pre.subtreeTriggered {
 			p.vlog.CLogf(
 				ctx, libkb.VLog2, "prefetch subtree already triggered "+
 					"for block ID %s", req.ptr.ID)
